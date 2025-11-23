@@ -191,6 +191,47 @@
       cursor: pointer;
       font-size: 12px;
     }
+    .existing-images {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+      padding: 10px;
+      background: #f9f9f9;
+      border-radius: 6px;
+    }
+    .existing-image-item {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      border: 2px solid #28a745;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .existing-image-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .existing-image-item button {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: auto;
+      padding: 2px 6px;
+      background: rgba(220, 53, 69, 0.9);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .existing-images-label {
+      font-size: 12px;
+      color: #28a745;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
     .recipes-section {
       margin-top: 40px;
       padding-top: 30px;
@@ -232,6 +273,7 @@
       border-top: 1px solid #eee;
       display: flex;
       justify-content: center;
+      gap: 8px;
     }
     .btn-delete {
       padding: 6px 12px;
@@ -245,6 +287,19 @@
     }
     .btn-delete:hover {
       background: #c82333;
+    }
+    .btn-edit {
+      padding: 6px 12px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.2s;
+    }
+    .btn-edit:hover {
+      background: #0066d1;
     }
     .loading {
       text-align: center;
@@ -274,11 +329,12 @@
 
 <div class="container hidden" id="adminPanel">
   <div class="header">
-    <h1>Přidat nový recept</h1>
+    <h1 id="formTitle">Přidat nový recept</h1>
     <button class="btn-logout" onclick="logout()">Odhlásit se</button>
   </div>
 
   <form id="recipeForm">
+    <input type="hidden" id="editingRecipeId" value="">
     <label>Název receptu *</label>
     <input type="text" id="title" required placeholder="např. Svíčková">
 
@@ -325,11 +381,16 @@
 
     <label>Obrázky</label>
     <div class="images-section">
+      <div id="existingImagesContainer" style="display: none;">
+        <div class="existing-images-label">Stávající obrázky:</div>
+        <div class="existing-images" id="existingImages"></div>
+      </div>
       <input type="file" id="imageFiles" multiple accept="image/*">
       <div class="image-preview" id="imagePreview"></div>
     </div>
 
-    <button type="submit" class="btn-submit">Uložit recept</button>
+    <button type="submit" class="btn-submit" id="submitBtn">Uložit recept</button>
+    <button type="button" class="btn-add" id="cancelEditBtn" style="display: none; margin-top: 10px;" onclick="cancelEdit()">Zrušit úpravu</button>
   </form>
 
   <div class="status" id="status"></div>
@@ -462,16 +523,153 @@
     input.dispatchEvent(new Event('change'));
   };
 
+  // Odstranění existujícího obrázku (pouze z UI, smaže se při uložení)
+  window.removeExistingImage = function(btn) {
+    if (confirm('Opravdu chceš odstranit tento obrázek?')) {
+      btn.parentElement.remove();
+      
+      // Pokud už nejsou žádné existující obrázky, skryj kontejner
+      const existingImages = document.getElementById('existingImages');
+      if (existingImages.children.length === 0) {
+        document.getElementById('existingImagesContainer').style.display = 'none';
+      }
+    }
+  };
+
+  // Funkce pro zrušení editace
+  window.cancelEdit = function() {
+    document.getElementById('recipeForm').reset();
+    document.getElementById('editingRecipeId').value = '';
+    document.getElementById('formTitle').textContent = 'Přidat nový recept';
+    document.getElementById('submitBtn').textContent = 'Uložit recept';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+    document.getElementById('imagePreview').innerHTML = '';
+    document.getElementById('existingImagesContainer').style.display = 'none';
+    document.getElementById('existingImages').innerHTML = '';
+    
+    // Reset ingrediencí a kroků na 1
+    document.getElementById('ingredientsList').innerHTML = `
+      <div class="ingredient-item">
+        <input class="nazevIng" type="text" placeholder="název (např. mouka)" required>
+        <input type="text" placeholder="množství (např. 200g)" required>
+        <button type="button" class="btn-small" onclick="removeItem(this)">✕</button>
+      </div>
+    `;
+    document.getElementById('stepsList').innerHTML = `
+      <div class="step-item">
+        <textarea placeholder="Krok 1" required></textarea>
+        <button type="button" class="btn-small" onclick="removeItem(this)">✕</button>
+      </div>
+    `;
+    
+    // Scroll nahoru
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Funkce pro editaci receptu
+  window.editRecipe = async function(recipeId) {
+    try {
+      // Načíst všechna data receptu
+      const { data: recipe, error: recipeError } = await supabase
+        .from('recipes')
+        .select(`
+          *,
+          recipe_ingredients(*),
+          recipe_steps(*),
+          recipe_images(*)
+        `)
+        .eq('id', recipeId)
+        .single();
+
+      if (recipeError) throw recipeError;
+
+      // Naplnit formulář
+      document.getElementById('editingRecipeId').value = recipe.id;
+      document.getElementById('title').value = recipe.title;
+      document.getElementById('description').value = recipe.description || '';
+      document.getElementById('difficulty').value = recipe.difficulty;
+      document.getElementById('category').value = recipe.category;
+      document.getElementById('duration').value = recipe.duration_minutes;
+
+      // Ingredience
+      const ingredientsList = document.getElementById('ingredientsList');
+      ingredientsList.innerHTML = '';
+      recipe.recipe_ingredients
+        .sort((a, b) => a.id - b.id)
+        .forEach(ing => {
+          const div = document.createElement('div');
+          div.className = 'ingredient-item';
+          div.innerHTML = `
+            <input class="nazevIng" type="text" placeholder="název" value="${ing.name}" required>
+            <input type="text" placeholder="množství" value="${ing.amount}" required>
+            <button type="button" class="btn-small" onclick="removeItem(this)">✕</button>
+          `;
+          ingredientsList.appendChild(div);
+        });
+
+      // Kroky
+      const stepsList = document.getElementById('stepsList');
+      stepsList.innerHTML = '';
+      recipe.recipe_steps
+        .sort((a, b) => a.step_number - b.step_number)
+        .forEach(step => {
+          const div = document.createElement('div');
+          div.className = 'step-item';
+          div.innerHTML = `
+            <textarea placeholder="Krok" required>${step.content}</textarea>
+            <button type="button" class="btn-small" onclick="removeItem(this)">✕</button>
+          `;
+          stepsList.appendChild(div);
+        });
+
+      // Existující obrázky
+      const existingImagesContainer = document.getElementById('existingImagesContainer');
+      const existingImages = document.getElementById('existingImages');
+      if (recipe.recipe_images && recipe.recipe_images.length > 0) {
+        existingImagesContainer.style.display = 'block';
+        existingImages.innerHTML = '';
+        recipe.recipe_images.forEach((img, index) => {
+          const div = document.createElement('div');
+          div.className = 'existing-image-item';
+          div.dataset.imageId = img.id;
+          div.dataset.imageUrl = img.image_url;
+          div.innerHTML = `
+            <img src="${img.image_url}" alt="Obrázek ${index + 1}">
+            <button onclick="removeExistingImage(this)">✕</button>
+          `;
+          existingImages.appendChild(div);
+        });
+      } else {
+        existingImagesContainer.style.display = 'none';
+      }
+
+      // Změna UI
+      document.getElementById('formTitle').textContent = 'Upravit recept';
+      document.getElementById('submitBtn').textContent = 'Aktualizovat recept';
+      document.getElementById('cancelEditBtn').style.display = 'block';
+
+      // Scroll nahoru k formuláři
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    } catch (err) {
+      alert('Chyba při načítání receptu: ' + err.message);
+      console.error(err);
+    }
+  };
+
+  // Form submit handler
   document.getElementById('recipeForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
     const status = document.getElementById('status');
     status.className = 'status';
-    status.textContent = 'Ukládám recept...';
+    const editingId = document.getElementById('editingRecipeId').value;
+    const isEditing = editingId !== '';
+    
+    status.textContent = isEditing ? 'Aktualizuji recept...' : 'Ukládám recept...';
     status.style.display = 'block';
 
     try {
-      // 1. Vytvoření receptu
       const recipeData = {
         title: document.getElementById('title').value.trim(),
         description: document.getElementById('description').value.trim() || null,
@@ -480,20 +678,72 @@
         duration_minutes: parseInt(document.getElementById('duration').value)
       };
 
-      const { data: recipe, error: recipeError } = await supabase
-        .from('recipes')
-        .insert([recipeData])
-        .select()
-        .single();
+      let recipeId;
+      
+      if (isEditing) {
+        // UPDATE existujícího receptu
+        const { error: updateError } = await supabase
+          .from('recipes')
+          .update(recipeData)
+          .eq('id', editingId);
+        
+        if (updateError) throw updateError;
+        recipeId = editingId;
+        
+        // Smazat staré ingredience a kroky
+        await supabase.from('recipe_ingredients').delete().eq('recipe_id', recipeId);
+        await supabase.from('recipe_steps').delete().eq('recipe_id', recipeId);
+        
+        // Zpracovat existující obrázky (smazat ty, které byly odstraněny)
+        const existingImageElements = document.querySelectorAll('#existingImages .existing-image-item');
+        const remainingImageUrls = Array.from(existingImageElements).map(el => el.dataset.imageUrl);
+        
+        // Získat všechny obrázky receptu z DB
+        const { data: allImages } = await supabase
+          .from('recipe_images')
+          .select('*')
+          .eq('recipe_id', recipeId);
+        
+        // Smazat obrázky, které nejsou v remainingImageUrls
+        if (allImages) {
+          for (const img of allImages) {
+            if (!remainingImageUrls.includes(img.image_url)) {
+              // Smazat ze Storage
+              const urlParts = img.image_url.split('/storage/v1/object/public/kucharkaObrazky/');
+              if (urlParts.length > 1) {
+                const filePath = urlParts[1];
+                await supabase.storage
+                  .from('kucharkaObrazky')
+                  .remove([filePath]);
+              }
+              
+              // Smazat z DB
+              await supabase
+                .from('recipe_images')
+                .delete()
+                .eq('id', img.id);
+            }
+          }
+        }
+        
+      } else {
+        // INSERT nového receptu
+        const { data: recipe, error: recipeError } = await supabase
+          .from('recipes')
+          .insert([recipeData])
+          .select()
+          .single();
 
-      if (recipeError) throw recipeError;
+        if (recipeError) throw recipeError;
+        recipeId = recipe.id;
+      }
 
       // 2. Přidání ingrediencí
       const ingredientItems = document.querySelectorAll('#ingredientsList .ingredient-item');
       const ingredients = Array.from(ingredientItems).map(item => {
         const inputs = item.querySelectorAll('input');
         return {
-          recipe_id: recipe.id,
+          recipe_id: recipeId,
           name: inputs[0].value.trim(),
           amount: inputs[1].value.trim()
         };
@@ -512,7 +762,7 @@
       const steps = Array.from(stepItems).map((item, index) => {
         const textarea = item.querySelector('textarea');
         return {
-          recipe_id: recipe.id,
+          recipe_id: recipeId,
           step_number: index + 1,
           content: textarea.value.trim()
         };
@@ -526,13 +776,13 @@
         if (stepsError) throw stepsError;
       }
 
-      // 4. Upload obrázků
+      // 4. Upload obrázků (jen pokud jsou vybrány nové)
       const imageFiles = document.getElementById('imageFiles').files;
       const imageUrls = [];
 
       for (let i = 0; i < imageFiles.length; i++) {
         const file = imageFiles[i];
-        const filePath = `recepty/${recipe.id}/${Date.now()}_${file.name}`;
+        const filePath = `recepty/${recipeId}/${Date.now()}_${file.name}`;
 
         const { error: uploadError } = await supabase.storage
           .from('kucharkaObrazky')
@@ -545,7 +795,7 @@
           .getPublicUrl(filePath);
 
         imageUrls.push({
-          recipe_id: recipe.id,
+          recipe_id: recipeId,
           image_url: urlData.publicUrl
         });
       }
@@ -560,36 +810,13 @@
 
       // Úspěch
       status.className = 'status success';
-      status.innerHTML = `
-        ✓ Recept "${recipe.title}" byl úspěšně uložen!<br>
-        <small>ID: ${recipe.id}</small>
-      `;
+      status.textContent = isEditing 
+        ? `✓ Recept byl aktualizován!`
+        : `✓ Recept "${recipeData.title}" byl úspěšně uložen!`;
 
       // Resetování formuláře
-      setTimeout(() => {
-        document.getElementById('recipeForm').reset();
-        document.getElementById('imagePreview').innerHTML = '';
-        
-        // Reset ingrediencí a kroků na 1
-        document.getElementById('ingredientsList').innerHTML = `
-          <div class="ingredient-item">
-            <input type="text" placeholder="název (např. mouka)" required>
-            <input type="text" placeholder="množství (např. 200g)" required>
-            <button type="button" class="btn-small" onclick="removeItem(this)">✕</button>
-          </div>
-        `;
-        document.getElementById('stepsList').innerHTML = `
-          <div class="step-item">
-            <textarea placeholder="Krok 1" required></textarea>
-            <button type="button" class="btn-small" onclick="removeItem(this)">✕</button>
-          </div>
-        `;
-        
-        status.style.display = 'none';
-        
-        // Znovu načíst recepty
-        loadRecipes();
-      }, 3000);
+      cancelEdit();
+      loadRecipes();
 
     } catch (err) {
       status.className = 'status error';
@@ -632,6 +859,7 @@
             ${imageUrl ? `<img src="${imageUrl}" alt="${recipe.title}" class="recipe-card-image">` : '<div class="recipe-card-image"></div>'}
             <div class="recipe-card-title">${recipe.title}</div>
             <div class="recipe-card-footer">
+              <button class="btn-edit" onclick="editRecipe('${recipe.id}')">Upravit</button>
               <button class="btn-delete" onclick="deleteRecipe('${recipe.id}', '${recipe.title.replace(/'/g, "\\'")}')">Smazat</button>
             </div>
           </div>
@@ -713,48 +941,6 @@
     }
   };
 
-  // Načíst recepty při načtení stránky (ale jen když je přihlášený)
-  // loadRecipes() se volá v checkAuth()
-
-  async function uploadImage() {
-    const file = document.getElementById("fileInput").files[0];
-    const recipeId = document.getElementById("recipeId").value.trim();
-    const status = document.getElementById("status");
-
-    if (!recipeId) {
-      status.innerText = "Musíš zadat ID receptu.";
-      return;
-    }
-    if (!file) {
-      status.innerText = "Musíš vybrat soubor.";
-      return;
-    }
-
-    try {
-      status.innerText = "Nahrávám…";
-
-      // Supabase „složka“ = prefix
-      const filePath = `recepty/${recipeId}/${file.name}`;
-
-      const { error } = await supabase.storage
-        .from("kucharkaObrazky")
-        .upload(filePath, file, { upsert: true });
-
-      if (error) throw error;
-
-      // vygenerování URL
-      const { data } = supabase.storage
-        .from("kucharkaObrazky")
-        .getPublicUrl(filePath);
-
-      status.innerHTML = `
-        Hotovo!<br>
-        URL: <a href="${data.publicUrl}" target="_blank">${data.publicUrl}</a>
-      `;
-    } catch (err) {
-      status.innerText = "Chyba: " + err.message;
-    }
-  }
 </script>
 
 </body>

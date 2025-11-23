@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kuchařka – Admin panel</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      background: #f5f5f5;
+      font-family: sans-serif;
+      padding: 20px;
+      margin: 0;
+    }
+    .login-container {
+      max-width: 400px;
+      margin: 100px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    .login-container h1 {
+      margin-top: 0;
+      text-align: center;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .btn-logout {
+      padding: 8px 16px;
+      background: #6c757d;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn-logout:hover {
+      background: #5a6268;
+    }
+    .hidden {
+      display: none !important;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin-top: 0;
+      color: #333;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 600;
+      color: #555;
+    }
+    input, textarea, select {
+      width: 100%;
+      margin-top: 5px;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+      font-family: sans-serif;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+    .ingredients-list, .steps-list {
+      margin-top: 10px;
+    }
+    .ingredient-item, .step-item {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+      align-items: center;
+    }
+    .ingredient-item input {
+      margin-top: 0;
+    }
+    .ingredient-item input:first-child {
+      flex: 1;
+    }
+    .ingredient-item input:last-child {
+      flex: 1;
+    }
+    .step-item textarea {
+      flex: 1;
+      margin-top: 0;
+    }
+    .btn-small {
+      padding: 8px 12px;
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn-small:hover {
+      background: #c82333;
+    }
+    .btn-add {
+      margin-top: 10px;
+      padding: 8px 16px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn-add:hover {
+      background: #218838;
+    }
+    .btn-submit {
+      width: 100%;
+      margin-top: 25px;
+      padding: 14px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .btn-submit:hover {
+      background: #0066d1;
+    }
+    .status {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      display: none;
+    }
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      display: block;
+    }
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      display: block;
+    }
+    .images-section {
+      margin-top: 10px;
+    }
+    .image-preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .image-preview-item {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .image-preview-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .image-preview-item button {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: auto;
+      padding: 2px 6px;
+      background: rgba(220, 53, 69, 0.9);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .recipes-section {
+      margin-top: 40px;
+      padding-top: 30px;
+      border-top: 2px solid #e0e0e0;
+    }
+    .recipes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .recipe-card {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+    }
+    .recipe-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .recipe-card-image {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      background: #f0f0f0;
+    }
+    .recipe-card-title {
+      padding: 12px;
+      font-weight: 600;
+      color: #333;
+      font-size: 14px;
+      text-align: center;
+    }
+    .recipe-card-footer {
+      padding: 8px;
+      border-top: 1px solid #eee;
+      display: flex;
+      justify-content: center;
+    }
+    .btn-delete {
+      padding: 6px 12px;
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.2s;
+    }
+    .btn-delete:hover {
+      background: #c82333;
+    }
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+    }
+    .nazevIng {
+      width: 200px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="loginScreen" class="login-container">
+  <h1>Přihlášení</h1>
+  <form id="loginForm">
+    <label>Email</label>
+    <input type="email" id="loginEmail" required placeholder="admin@example.com">
+    
+    <label>Heslo</label>
+    <input type="password" id="loginPassword" required placeholder="••••••••">
+    
+    <button type="submit" class="btn-submit">Přihlásit se</button>
+  </form>
+  <div class="status" id="loginStatus"></div>
+</div>
+
+<div class="container hidden" id="adminPanel">
+  <div class="header">
+    <h1>Přidat nový recept</h1>
+    <button class="btn-logout" onclick="logout()">Odhlásit se</button>
+  </div>
+
+  <form id="recipeForm">
+    <label>Název receptu *</label>
+    <input type="text" id="title" required placeholder="např. Svíčková">
+
+    <label>Popis</label>
+    <textarea id="description" placeholder="Krátký popis receptu"></textarea>
+
+    <label>Obtížnost *</label>
+    <select id="difficulty" required>
+      <option value="lehké">Lehké</option>
+      <option value="střední">Střední</option>
+      <option value="těžké">Těžké</option>
+    </select>
+
+    <label>Kategorie *</label>
+    <select id="category" required>
+      <option value="hlavni">Hlavní jídlo</option>
+      <option value="dezert">Dezert</option>
+      <option value="polevka">Polévka</option>
+      <option value="salat">Salát</option>
+      <option value="snidane">Snídaně</option>
+    </select>
+
+    <label>Doba přípravy (minuty) *</label>
+    <input type="number" id="duration" required min="0" value="30">
+
+    <label>Ingredience *</label>
+    <div class="ingredients-list" id="ingredientsList">
+      <div class="ingredient-item">
+        <input class="nazevIng" type="text" placeholder="název (např. mouka)" required>
+        <input type="text" placeholder="množství (např. 200g)" required>
+        <button type="button" class="btn-small" onclick="removeItem(this)">✕</button>
+      </div>
+    </div>
+    <button type="button" class="btn-add" onclick="addIngredient()">+ Přidat ingredienci</button>
+
+    <label>Postup přípravy *</label>
+    <div class="steps-list" id="stepsList">
+      <div class="step-item">
+        <textarea placeholder="Krok 1" required></textarea>
+        <button type="button" class="btn-small" onclick="removeItem(this)">✕</button>
+      </div>
+    </div>
+    <button type="button" class="btn-add" onclick="addStep()">+ Přidat krok</button>
+
+    <label>Obrázky</label>
+    <div class="images-section">
+      <input type="file" id="imageFiles" multiple accept="image/*">
+      <div class="image-preview" id="imagePreview"></div>
+    </div>
+
+    <button type="submit" class="btn-submit">Uložit recept</button>
+  </form>
+
+  <div class="status" id="status"></div>
+
+  <div class="recipes-section">
+    <h2>Existující recepty</h2>
+    <div class="loading" id="loading">Načítám recepty...</div>
+    <div class="recipes-grid" id="recipesGrid"></div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const supabase = createClient(
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_ANON_KEY
+  );
+
+  // Kontrola přihlášení při načtení stránky
+  async function checkAuth() {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session) {
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('adminPanel').classList.remove('hidden');
+      loadRecipes();
+    } else {
+      document.getElementById('loginScreen').classList.remove('hidden');
+      document.getElementById('adminPanel').classList.add('hidden');
+    }
+  }
+
+  // Přihlášení
+  document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    const status = document.getElementById('loginStatus');
+    
+    status.textContent = 'Přihlašuji...';
+    status.className = 'status';
+    status.style.display = 'block';
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+      if (error) throw error;
+
+      status.className = 'status success';
+      status.textContent = '✓ Přihlášení úspěšné!';
+      
+      setTimeout(() => {
+        checkAuth();
+      }, 500);
+
+    } catch (err) {
+      status.className = 'status error';
+      status.textContent = '✕ Chyba: ' + err.message;
+    }
+  });
+
+  // Odhlášení
+  window.logout = async function() {
+    await supabase.auth.signOut();
+    checkAuth();
+  };
+
+  // Kontrola při načtení
+  checkAuth();
+
+  window.addIngredient = function() {
+    const list = document.getElementById('ingredientsList');
+    const div = document.createElement('div');
+    div.className = 'ingredient-item';
+    div.innerHTML = `
+      <input class="nazevIng" type="text" placeholder="název" required>
+      <input type="text" placeholder="množství" required>
+      <button type="button" class="btn-small" onclick="removeItem(this)">✕</button>
+    `;
+    list.appendChild(div);
+  };
+
+  window.addStep = function() {
+    const list = document.getElementById('stepsList');
+    const div = document.createElement('div');
+    div.className = 'step-item';
+    div.innerHTML = `
+      <textarea placeholder="Další krok" required></textarea>
+      <button type="button" class="btn-small" onclick="removeItem(this)">✕</button>
+    `;
+    list.appendChild(div);
+  };
+
+  window.removeItem = function(btn) {
+    btn.parentElement.remove();
+  };
+
+  // Preview obrázků
+  document.getElementById('imageFiles').addEventListener('change', function(e) {
+    const preview = document.getElementById('imagePreview');
+    preview.innerHTML = '';
+    
+    Array.from(e.target.files).forEach((file, index) => {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const div = document.createElement('div');
+        div.className = 'image-preview-item';
+        div.innerHTML = `
+          <img src="${e.target.result}" alt="preview">
+          <button onclick="removeImage(${index})">✕</button>
+        `;
+        preview.appendChild(div);
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+
+  window.removeImage = function(index) {
+    const input = document.getElementById('imageFiles');
+    const dt = new DataTransfer();
+    const files = Array.from(input.files);
+    files.splice(index, 1);
+    files.forEach(file => dt.items.add(file));
+    input.files = dt.files;
+    input.dispatchEvent(new Event('change'));
+  };
+
+  document.getElementById('recipeForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const status = document.getElementById('status');
+    status.className = 'status';
+    status.textContent = 'Ukládám recept...';
+    status.style.display = 'block';
+
+    try {
+      // 1. Vytvoření receptu
+      const recipeData = {
+        title: document.getElementById('title').value.trim(),
+        description: document.getElementById('description').value.trim() || null,
+        difficulty: document.getElementById('difficulty').value,
+        category: document.getElementById('category').value,
+        duration_minutes: parseInt(document.getElementById('duration').value)
+      };
+
+      const { data: recipe, error: recipeError } = await supabase
+        .from('recipes')
+        .insert([recipeData])
+        .select()
+        .single();
+
+      if (recipeError) throw recipeError;
+
+      // 2. Přidání ingrediencí
+      const ingredientItems = document.querySelectorAll('#ingredientsList .ingredient-item');
+      const ingredients = Array.from(ingredientItems).map(item => {
+        const inputs = item.querySelectorAll('input');
+        return {
+          recipe_id: recipe.id,
+          name: inputs[0].value.trim(),
+          amount: inputs[1].value.trim()
+        };
+      });
+
+      if (ingredients.length > 0) {
+        const { error: ingredientsError } = await supabase
+          .from('recipe_ingredients')
+          .insert(ingredients);
+        
+        if (ingredientsError) throw ingredientsError;
+      }
+
+      // 3. Přidání kroků
+      const stepItems = document.querySelectorAll('#stepsList .step-item');
+      const steps = Array.from(stepItems).map((item, index) => {
+        const textarea = item.querySelector('textarea');
+        return {
+          recipe_id: recipe.id,
+          step_number: index + 1,
+          content: textarea.value.trim()
+        };
+      });
+
+      if (steps.length > 0) {
+        const { error: stepsError } = await supabase
+          .from('recipe_steps')
+          .insert(steps);
+        
+        if (stepsError) throw stepsError;
+      }
+
+      // 4. Upload obrázků
+      const imageFiles = document.getElementById('imageFiles').files;
+      const imageUrls = [];
+
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
+        const filePath = `recepty/${recipe.id}/${Date.now()}_${file.name}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('kucharkaObrazky')
+          .upload(filePath, file, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('kucharkaObrazky')
+          .getPublicUrl(filePath);
+
+        imageUrls.push({
+          recipe_id: recipe.id,
+          image_url: urlData.publicUrl
+        });
+      }
+
+      if (imageUrls.length > 0) {
+        const { error: imagesError } = await supabase
+          .from('recipe_images')
+          .insert(imageUrls);
+        
+        if (imagesError) throw imagesError;
+      }
+
+      // Úspěch
+      status.className = 'status success';
+      status.innerHTML = `
+        ✓ Recept "${recipe.title}" byl úspěšně uložen!<br>
+        <small>ID: ${recipe.id}</small>
+      `;
+
+      // Resetování formuláře
+      setTimeout(() => {
+        document.getElementById('recipeForm').reset();
+        document.getElementById('imagePreview').innerHTML = '';
+        
+        // Reset ingrediencí a kroků na 1
+        document.getElementById('ingredientsList').innerHTML = `
+          <div class="ingredient-item">
+            <input type="text" placeholder="název (např. mouka)" required>
+            <input type="text" placeholder="množství (např. 200g)" required>
+            <button type="button" class="btn-small" onclick="removeItem(this)">✕</button>
+          </div>
+        `;
+        document.getElementById('stepsList').innerHTML = `
+          <div class="step-item">
+            <textarea placeholder="Krok 1" required></textarea>
+            <button type="button" class="btn-small" onclick="removeItem(this)">✕</button>
+          </div>
+        `;
+        
+        status.style.display = 'none';
+        
+        // Znovu načíst recepty
+        loadRecipes();
+      }, 3000);
+
+    } catch (err) {
+      status.className = 'status error';
+      status.textContent = '✕ Chyba: ' + err.message;
+      console.error(err);
+    }
+  });
+
+  // Načtení a zobrazení receptů
+  async function loadRecipes() {
+    const loading = document.getElementById('loading');
+    const grid = document.getElementById('recipesGrid');
+    
+    try {
+      const { data: recipes, error } = await supabase
+        .from('recipes')
+        .select(`
+          id,
+          title,
+          recipe_images(image_url)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      loading.style.display = 'none';
+
+      if (recipes.length === 0) {
+        grid.innerHTML = '<p style="text-align: center; color: #999;">Zatím nejsou žádné recepty</p>';
+        return;
+      }
+
+      grid.innerHTML = recipes.map(recipe => {
+        const imageUrl = recipe.recipe_images && recipe.recipe_images.length > 0
+          ? recipe.recipe_images[0].image_url
+          : '';
+        
+        return `
+          <div class="recipe-card">
+            ${imageUrl ? `<img src="${imageUrl}" alt="${recipe.title}" class="recipe-card-image">` : '<div class="recipe-card-image"></div>'}
+            <div class="recipe-card-title">${recipe.title}</div>
+            <div class="recipe-card-footer">
+              <button class="btn-delete" onclick="deleteRecipe('${recipe.id}', '${recipe.title.replace(/'/g, "\\'")}')">Smazat</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+    } catch (err) {
+      loading.style.display = 'none';
+      grid.innerHTML = `<p style="text-align: center; color: #dc3545;">Chyba při načítání: ${err.message}</p>`;
+      console.error(err);
+    }
+  }
+
+  // Smazání receptu
+  window.deleteRecipe = async function(recipeId, recipeTitle) {
+    if (!confirm(`Opravdu chceš smazat recept "${recipeTitle}"?`)) {
+      return;
+    }
+
+    try {
+      // 1. Získat všechny obrázky receptu
+      const { data: images } = await supabase
+        .from('recipe_images')
+        .select('image_url')
+        .eq('recipe_id', recipeId);
+
+      // 2. Smazat obrázky ze Storage
+      if (images && images.length > 0) {
+        for (const img of images) {
+          // Extrahovat cestu ze Storage URL
+          const urlParts = img.image_url.split('/storage/v1/object/public/kucharkaObrazky/');
+          if (urlParts.length > 1) {
+            const filePath = urlParts[1];
+            await supabase.storage
+              .from('kucharkaObrazky')
+              .remove([filePath]);
+          }
+        }
+      }
+
+      // 3. Smazat složku receptu ze Storage (pokud existuje)
+      const { data: folderFiles } = await supabase.storage
+        .from('kucharkaObrazky')
+        .list(`recepty/${recipeId}`);
+      
+      if (folderFiles && folderFiles.length > 0) {
+        const filePaths = folderFiles.map(file => `recepty/${recipeId}/${file.name}`);
+        await supabase.storage
+          .from('kucharkaObrazky')
+          .remove(filePaths);
+      }
+
+      // 4. Smazat recept z databáze (cascade smaže ingredience, kroky, images záznamy)
+      const { error } = await supabase
+        .from('recipes')
+        .delete()
+        .eq('id', recipeId);
+
+      if (error) throw error;
+
+      // Znovu načíst recepty
+      loadRecipes();
+
+      // Zobrazit potvrzení
+      const status = document.getElementById('status');
+      status.className = 'status success';
+      status.textContent = `✓ Recept "${recipeTitle}" byl smazán`;
+      status.style.display = 'block';
+      setTimeout(() => {
+        status.style.display = 'none';
+      }, 3000);
+
+    } catch (err) {
+      const status = document.getElementById('status');
+      status.className = 'status error';
+      status.textContent = '✕ Chyba při mazání: ' + err.message;
+      status.style.display = 'block';
+      console.error(err);
+    }
+  };
+
+  // Načíst recepty při načtení stránky (ale jen když je přihlášený)
+  // loadRecipes() se volá v checkAuth()
+
+  async function uploadImage() {
+    const file = document.getElementById("fileInput").files[0];
+    const recipeId = document.getElementById("recipeId").value.trim();
+    const status = document.getElementById("status");
+
+    if (!recipeId) {
+      status.innerText = "Musíš zadat ID receptu.";
+      return;
+    }
+    if (!file) {
+      status.innerText = "Musíš vybrat soubor.";
+      return;
+    }
+
+    try {
+      status.innerText = "Nahrávám…";
+
+      // Supabase „složka“ = prefix
+      const filePath = `recepty/${recipeId}/${file.name}`;
+
+      const { error } = await supabase.storage
+        .from("kucharkaObrazky")
+        .upload(filePath, file, { upsert: true });
+
+      if (error) throw error;
+
+      // vygenerování URL
+      const { data } = supabase.storage
+        .from("kucharkaObrazky")
+        .getPublicUrl(filePath);
+
+      status.innerHTML = `
+        Hotovo!<br>
+        URL: <a href="${data.publicUrl}" target="_blank">${data.publicUrl}</a>
+      `;
+    } catch (err) {
+      status.innerText = "Chyba: " + err.message;
+    }
+  }
+</script>
+
+</body>
+</html>

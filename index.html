@@ -309,6 +309,52 @@
     .nazevIng {
       width: 200px;
     }
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+    .tab {
+      padding: 10px 20px;
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      color: #666;
+      transition: all 0.3s;
+    }
+    .tab:hover {
+      color: #007bff;
+    }
+    .tab.active {
+      color: #007bff;
+      border-bottom-color: #007bff;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .article-type-selector {
+      display: flex;
+      gap: 15px;
+      margin: 15px 0;
+    }
+    .article-type-selector label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-weight: normal;
+    }
+    .article-type-selector input[type="radio"] {
+      width: auto;
+      margin: 0;
+    }
   </style>
 </head>
 <body>
@@ -329,11 +375,19 @@
 
 <div class="container hidden" id="adminPanel">
   <div class="header">
-    <h1 id="formTitle">Přidat nový recept</h1>
+    <h1>Admin panel</h1>
     <button class="btn-logout" onclick="logout()">Odhlásit se</button>
   </div>
 
-  <form id="recipeForm">
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('recipes')">Recepty</button>
+    <button class="tab" onclick="switchTab('articles')">Články</button>
+  </div>
+
+  <!-- RECEPTY TAB -->
+  <div id="recipesTab" class="tab-content active">
+    <h2 id="formTitle">Přidat nový recept</h2>
+    <form id="recipeForm">
     <input type="hidden" id="editingRecipeId" value="">
     <label>Název receptu *</label>
     <input type="text" id="title" required placeholder="např. Svíčková">
@@ -395,10 +449,68 @@
 
   <div class="status" id="status"></div>
 
-  <div class="recipes-section">
-    <h2>Existující recepty</h2>
-    <div class="loading" id="loading">Načítám recepty...</div>
-    <div class="recipes-grid" id="recipesGrid"></div>
+    <div class="recipes-section">
+      <h2>Existující recepty</h2>
+      <div class="loading" id="loading">Načítám recepty...</div>
+      <div class="recipes-grid" id="recipesGrid"></div>
+    </div>
+  </div>
+
+  <!-- ČLÁNKY TAB -->
+  <div id="articlesTab" class="tab-content">
+    <h2 id="articleFormTitle">Přidat nový článek</h2>
+    <form id="articleForm">
+      <input type="hidden" id="editingArticleId" value="">
+      
+      <label>Typ článku *</label>
+      <div class="article-type-selector">
+        <label>
+          <input type="radio" name="articleType" value="internal" checked onchange="toggleArticleType()">
+          Interní (vlastní obsah)
+        </label>
+        <label>
+          <input type="radio" name="articleType" value="external" onchange="toggleArticleType()">
+          Externí (odkaz)
+        </label>
+      </div>
+
+      <label>Název článku *</label>
+      <input type="text" id="articleTitle" required placeholder="např. 10 tipů pro přípravu těsta">
+
+      <label>Autor *</label>
+      <input type="text" id="articleAuthor" required placeholder="např. Jan Novák">
+
+      <div id="internalFields">
+        <label>Obsah článku *</label>
+        <textarea id="articleContent" placeholder="Sem napiš obsah článku..." style="min-height: 200px;"></textarea>
+      </div>
+
+      <div id="externalFields" style="display: none;">
+        <label>URL zdroje *</label>
+        <input type="url" id="articleSourceUrl" placeholder="https://example.com/clanek">
+      </div>
+
+      <label>Obrázky</label>
+      <div class="images-section">
+        <div id="existingArticleImagesContainer" style="display: none;">
+          <div class="existing-images-label">Stávající obrázky:</div>
+          <div class="existing-images" id="existingArticleImages"></div>
+        </div>
+        <input type="file" id="articleImageFiles" multiple accept="image/*">
+        <div class="image-preview" id="articleImagePreview"></div>
+      </div>
+
+      <button type="submit" class="btn-submit" id="articleSubmitBtn">Uložit článek</button>
+      <button type="button" class="btn-add" id="cancelArticleEditBtn" style="display: none; margin-top: 10px;" onclick="cancelArticleEdit()">Zrušit úpravu</button>
+    </form>
+
+    <div class="status" id="articleStatus"></div>
+
+    <div class="recipes-section">
+      <h2>Existující články</h2>
+      <div class="loading" id="articlesLoading">Načítám články...</div>
+      <div class="recipes-grid" id="articlesGrid"></div>
+    </div>
   </div>
 </div>
 
@@ -934,6 +1046,402 @@
 
     } catch (err) {
       const status = document.getElementById('status');
+      status.className = 'status error';
+      status.textContent = '✕ Chyba při mazání: ' + err.message;
+      status.style.display = 'block';
+      console.error(err);
+    }
+  };
+
+  // ===== ČLÁNKY FUNKCE =====
+
+  // Přepínání záložek
+  window.switchTab = function(tab) {
+    // Aktualizace záložek
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    
+    if (tab === 'recipes') {
+      document.querySelector('.tab:nth-child(1)').classList.add('active');
+      document.getElementById('recipesTab').classList.add('active');
+    } else if (tab === 'articles') {
+      document.querySelector('.tab:nth-child(2)').classList.add('active');
+      document.getElementById('articlesTab').classList.add('active');
+      loadArticles();
+    }
+  };
+
+  // Přepínání typu článku
+  window.toggleArticleType = function() {
+    const type = document.querySelector('input[name="articleType"]:checked').value;
+    const internalFields = document.getElementById('internalFields');
+    const externalFields = document.getElementById('externalFields');
+    const contentField = document.getElementById('articleContent');
+    const urlField = document.getElementById('articleSourceUrl');
+    
+    if (type === 'internal') {
+      internalFields.style.display = 'block';
+      externalFields.style.display = 'none';
+      contentField.required = true;
+      urlField.required = false;
+    } else {
+      internalFields.style.display = 'none';
+      externalFields.style.display = 'block';
+      contentField.required = false;
+      urlField.required = true;
+    }
+  };
+
+  // Preview obrázků pro články
+  document.getElementById('articleImageFiles').addEventListener('change', function(e) {
+    const preview = document.getElementById('articleImagePreview');
+    preview.innerHTML = '';
+    
+    Array.from(e.target.files).forEach((file, index) => {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const div = document.createElement('div');
+        div.className = 'image-preview-item';
+        div.innerHTML = `
+          <img src="${e.target.result}" alt="preview">
+          <button onclick="removeArticleImage(${index})">✕</button>
+        `;
+        preview.appendChild(div);
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+
+  window.removeArticleImage = function(index) {
+    const input = document.getElementById('articleImageFiles');
+    const dt = new DataTransfer();
+    const files = Array.from(input.files);
+    files.splice(index, 1);
+    files.forEach(file => dt.items.add(file));
+    input.files = dt.files;
+    input.dispatchEvent(new Event('change'));
+  };
+
+  window.removeExistingArticleImage = function(btn) {
+    if (confirm('Opravdu chceš odstranit tento obrázek?')) {
+      btn.parentElement.remove();
+      
+      const existingImages = document.getElementById('existingArticleImages');
+      if (existingImages.children.length === 0) {
+        document.getElementById('existingArticleImagesContainer').style.display = 'none';
+      }
+    }
+  };
+
+  // Submit článku
+  document.getElementById('articleForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const status = document.getElementById('articleStatus');
+    status.className = 'status';
+    const editingId = document.getElementById('editingArticleId').value;
+    const isEditing = editingId !== '';
+    
+    status.textContent = isEditing ? 'Aktualizuji článek...' : 'Ukládám článek...';
+    status.style.display = 'block';
+
+    try {
+      const type = document.querySelector('input[name="articleType"]:checked').value;
+      const articleData = {
+        type: type,
+        title: document.getElementById('articleTitle').value.trim(),
+        author: document.getElementById('articleAuthor').value.trim(),
+        content: type === 'internal' ? document.getElementById('articleContent').value.trim() : null,
+        source_url: type === 'external' ? document.getElementById('articleSourceUrl').value.trim() : null
+      };
+
+      let articleId;
+      
+      if (isEditing) {
+        const { error: updateError } = await supabase
+          .from('articles')
+          .update(articleData)
+          .eq('id', editingId);
+        
+        if (updateError) throw updateError;
+        articleId = editingId;
+        
+        // Zpracovat existující obrázky
+        const existingImageElements = document.querySelectorAll('#existingArticleImages .existing-image-item');
+        const remainingImageUrls = Array.from(existingImageElements).map(el => el.dataset.imageUrl);
+        
+        const { data: allImages } = await supabase
+          .from('article_images')
+          .select('*')
+          .eq('article_id', articleId);
+        
+        if (allImages) {
+          for (const img of allImages) {
+            if (!remainingImageUrls.includes(img.image_url)) {
+              const urlParts = img.image_url.split('/storage/v1/object/public/kucharkaObrazky/');
+              if (urlParts.length > 1) {
+                const filePath = urlParts[1];
+                await supabase.storage
+                  .from('kucharkaObrazky')
+                  .remove([filePath]);
+              }
+              
+              await supabase
+                .from('article_images')
+                .delete()
+                .eq('id', img.id);
+            }
+          }
+        }
+      } else {
+        const { data: article, error: articleError } = await supabase
+          .from('articles')
+          .insert([articleData])
+          .select()
+          .single();
+
+        if (articleError) throw articleError;
+        articleId = article.id;
+      }
+
+      // Upload obrázků
+      const imageFiles = document.getElementById('articleImageFiles').files;
+      const imageUrls = [];
+
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
+        const filePath = `clanky/${articleId}/${Date.now()}_${file.name}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('kucharkaObrazky')
+          .upload(filePath, file, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('kucharkaObrazky')
+          .getPublicUrl(filePath);
+
+        imageUrls.push({
+          article_id: articleId,
+          image_url: urlData.publicUrl
+        });
+      }
+
+      if (imageUrls.length > 0) {
+        const { error: imagesError } = await supabase
+          .from('article_images')
+          .insert(imageUrls);
+        
+        if (imagesError) throw imagesError;
+      }
+
+      status.className = 'status success';
+      status.textContent = isEditing 
+        ? `✓ Článek byl aktualizován!`
+        : `✓ Článek "${articleData.title}" byl úspěšně uložen!`;
+
+      cancelArticleEdit();
+      loadArticles();
+
+    } catch (err) {
+      status.className = 'status error';
+      status.textContent = '✕ Chyba: ' + err.message;
+      console.error(err);
+    }
+  });
+
+  // Zrušení editace článku
+  window.cancelArticleEdit = function() {
+    document.getElementById('articleForm').reset();
+    document.getElementById('editingArticleId').value = '';
+    document.getElementById('articleFormTitle').textContent = 'Přidat nový článek';
+    document.getElementById('articleSubmitBtn').textContent = 'Uložit článek';
+    document.getElementById('cancelArticleEditBtn').style.display = 'none';
+    document.getElementById('articleImagePreview').innerHTML = '';
+    document.getElementById('existingArticleImagesContainer').style.display = 'none';
+    document.getElementById('existingArticleImages').innerHTML = '';
+    toggleArticleType();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Načtení článků
+  async function loadArticles() {
+    const loading = document.getElementById('articlesLoading');
+    const grid = document.getElementById('articlesGrid');
+    
+    try {
+      const { data: articles, error } = await supabase
+        .from('articles')
+        .select(`
+          id,
+          type,
+          title,
+          author,
+          source_url,
+          article_images(image_url)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      loading.style.display = 'none';
+
+      if (articles.length === 0) {
+        grid.innerHTML = '<p style="text-align: center; color: #999;">Zatím nejsou žádné články</p>';
+        return;
+      }
+
+      grid.innerHTML = articles.map(article => {
+        const imageUrl = article.article_images && article.article_images.length > 0
+          ? article.article_images[0].image_url
+          : '';
+        
+        const typeLabel = article.type === 'internal' ? '📝 Interní' : '🔗 Externí';
+        
+        return `
+          <div class="recipe-card">
+            ${imageUrl ? `<img src="${imageUrl}" alt="${article.title}" class="recipe-card-image">` : '<div class="recipe-card-image"></div>'}
+            <div class="recipe-card-title">
+              <div style="font-size: 11px; color: #666; margin-bottom: 4px;">${typeLabel}</div>
+              ${article.title}
+              <div style="font-size: 11px; color: #999; margin-top: 4px;">Autor: ${article.author}</div>
+            </div>
+            <div class="recipe-card-footer">
+              <button class="btn-edit" onclick="editArticle('${article.id}')">Upravit</button>
+              <button class="btn-delete" onclick="deleteArticle('${article.id}', '${article.title.replace(/'/g, "\\'")}')">Smazat</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+    } catch (err) {
+      loading.style.display = 'none';
+      grid.innerHTML = `<p style="text-align: center; color: #dc3545;">Chyba při načítání: ${err.message}</p>`;
+      console.error(err);
+    }
+  }
+
+  // Editace článku
+  window.editArticle = async function(articleId) {
+    try {
+      const { data: article, error: articleError } = await supabase
+        .from('articles')
+        .select(`
+          *,
+          article_images(*)
+        `)
+        .eq('id', articleId)
+        .single();
+
+      if (articleError) throw articleError;
+
+      // Naplnit formulář
+      document.getElementById('editingArticleId').value = article.id;
+      document.getElementById('articleTitle').value = article.title;
+      document.getElementById('articleAuthor').value = article.author;
+      
+      // Nastavit typ
+      document.querySelector(`input[name="articleType"][value="${article.type}"]`).checked = true;
+      toggleArticleType();
+      
+      if (article.type === 'internal') {
+        document.getElementById('articleContent').value = article.content || '';
+      } else {
+        document.getElementById('articleSourceUrl').value = article.source_url || '';
+      }
+
+      // Existující obrázky
+      const existingImagesContainer = document.getElementById('existingArticleImagesContainer');
+      const existingImages = document.getElementById('existingArticleImages');
+      if (article.article_images && article.article_images.length > 0) {
+        existingImagesContainer.style.display = 'block';
+        existingImages.innerHTML = '';
+        article.article_images.forEach((img, index) => {
+          const div = document.createElement('div');
+          div.className = 'existing-image-item';
+          div.dataset.imageId = img.id;
+          div.dataset.imageUrl = img.image_url;
+          div.innerHTML = `
+            <img src="${img.image_url}" alt="Obrázek ${index + 1}">
+            <button onclick="removeExistingArticleImage(this)">✕</button>
+          `;
+          existingImages.appendChild(div);
+        });
+      } else {
+        existingImagesContainer.style.display = 'none';
+      }
+
+      document.getElementById('articleFormTitle').textContent = 'Upravit článek';
+      document.getElementById('articleSubmitBtn').textContent = 'Aktualizovat článek';
+      document.getElementById('cancelArticleEditBtn').style.display = 'block';
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    } catch (err) {
+      alert('Chyba při načítání článku: ' + err.message);
+      console.error(err);
+    }
+  };
+
+  // Smazání článku
+  window.deleteArticle = async function(articleId, articleTitle) {
+    if (!confirm(`Opravdu chceš smazat článek "${articleTitle}"?`)) {
+      return;
+    }
+
+    try {
+      // Získat obrázky
+      const { data: images } = await supabase
+        .from('article_images')
+        .select('image_url')
+        .eq('article_id', articleId);
+
+      // Smazat obrázky ze Storage
+      if (images && images.length > 0) {
+        for (const img of images) {
+          const urlParts = img.image_url.split('/storage/v1/object/public/kucharkaObrazky/');
+          if (urlParts.length > 1) {
+            const filePath = urlParts[1];
+            await supabase.storage
+              .from('kucharkaObrazky')
+              .remove([filePath]);
+          }
+        }
+      }
+
+      // Smazat složku
+      const { data: folderFiles } = await supabase.storage
+        .from('kucharkaObrazky')
+        .list(`clanky/${articleId}`);
+      
+      if (folderFiles && folderFiles.length > 0) {
+        const filePaths = folderFiles.map(file => `clanky/${articleId}/${file.name}`);
+        await supabase.storage
+          .from('kucharkaObrazky')
+          .remove(filePaths);
+      }
+
+      // Smazat článek
+      const { error } = await supabase
+        .from('articles')
+        .delete()
+        .eq('id', articleId);
+
+      if (error) throw error;
+
+      loadArticles();
+
+      const status = document.getElementById('articleStatus');
+      status.className = 'status success';
+      status.textContent = `✓ Článek "${articleTitle}" byl smazán`;
+      status.style.display = 'block';
+      setTimeout(() => {
+        status.style.display = 'none';
+      }, 3000);
+
+    } catch (err) {
+      const status = document.getElementById('articleStatus');
       status.className = 'status error';
       status.textContent = '✕ Chyba při mazání: ' + err.message;
       status.style.display = 'block';

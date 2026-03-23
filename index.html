@@ -414,6 +414,9 @@
     <label>Doba přípravy (minuty) *</label>
     <input type="number" id="duration" required min="0" value="30">
 
+    <label>Počet porcí *</label>
+    <input type="number" id="servings" required min="1" value="4">
+
     <label>Ingredience *</label>
     <div class="ingredients-list" id="ingredientsList">
       <div class="ingredient-item">
@@ -702,6 +705,7 @@
       document.getElementById('difficulty').value = recipe.difficulty;
       document.getElementById('category').value = recipe.category;
       document.getElementById('duration').value = recipe.duration_minutes;
+      document.getElementById('servings').value = recipe.servings ?? 4;
 
       // Ingredience
       const ingredientsList = document.getElementById('ingredientsList');
@@ -787,7 +791,8 @@
         description: document.getElementById('description').value.trim() || null,
         difficulty: document.getElementById('difficulty').value,
         category: document.getElementById('category').value,
-        duration_minutes: parseInt(document.getElementById('duration').value)
+        duration_minutes: parseInt(document.getElementById('duration').value),
+        servings: parseInt(document.getElementById('servings').value)
       };
 
       let recipeId;
